@@ -55,6 +55,147 @@ Further notes:
 */
 
 /* Please write your JavaScript code here */
+// generate random integer number in given range [min,max]
+function getRandomInt(min, max) {
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+// check if given value is in given range
+function valueInRange(value, min, max) {
+	return (value >= min) && (value <= max);
+}
+// generate random RGB color value
+function getColor() {
+	var r = getRandomInt(0,255);
+	var g = getRandomInt(0,255);
+	var b = getRandomInt(0,255);
+	return "rgb(" + r + "," + g + "," + b + ")";
+}
+// initialize "canvas" div element
+function initCanvas() {
+	var c = document.createElement("DIV");
+	c.style.position = "absolute";
+	c.style.backgroundColor = getColor();
+	c.style.top = "0px";
+	c.style.left = "0px";
+	c.style.width = containerWidth + "px";
+	c.style.height = containerHeight + "px";
+	return c;
+}
+// check if two given rectangles are overlap
+function rectanglesOverlap(A, B) {
+	xOverlap = valueInRange(A.x, B.x, B.x + B.w) || valueInRange(B.x, A.x, A.x + A.w);
+	yOverlap = valueInRange(A.y, B.y, B.y + B.h) || valueInRange(B.y, A.y, A.y + A.h);
+	return xOverlap && yOverlap;
+}
+// generate new random position for given rectangle rectA according to other existing rectangles
+function generateRectanglePos(rectA, activeRectangles) {
+	var correct = false, iterNum = 0;// iterNum - infinite loop protection
+	while(!correct) {
+		iterNum++;
+		// generate random position
+		rectA.x = getRandomInt(0, containerWidth - rectA.w);
+		rectA.y = getRandomInt(0, containerHeight - rectA.h);
+		// check overlapping
+		var overlap = false;
+		for(var i = 0; i < activeRectangles.length; i++) {
+			if(+i !== +rectA.id) {
+				var rectB = activeRectangles[i];
+				if(rectanglesOverlap(rectA, rectB)) overlap = true;
+			}
+		}
+		// check mouse position overlapping
+		var mousePos = false;
+		if(rectA.mPosX !== undefined) {
+			mousePos = valueInRange(rectA.mPosX, rectA.x, rectA.x + rectA.w) && valueInRange(rectA.mPosY, rectA.y, rectA.y + rectA.h);
+		}
+		//console.log("generateRectanglePos", rectA, overlap, mousePos, iterNum);
+		correct = (!mousePos && !overlap) || iterNum > 1000;
+	}
+	if(iterNum > 1000) console.error("Iteration limit reached!");
+}
+// create new rectangle
+function createRectangle(activeRectangles) {
+	// generate object with necessary properties
+	var rectA = {
+		id : activeRectangles.length,
+		timer : undefined,
+		mPosX : undefined,
+		mPosY : undefined,
+		w : 0,
+		h : 0,
+		x : 0,
+		y : 0
+	};
+	// set random size
+	rectA.w = getRandomInt(minRectDim, maxRectDim);
+	rectA.h = getRandomInt(minRectDim, maxRectDim);
+	// generate position
+	generateRectanglePos(rectA, activeRectangles);
+	// add object to storage
+	activeRectangles.push(rectA);
+	// create DOM element
+	var r = document.createElement("DIV");
+	// setup DOM element
+	r.style.position = "absolute";
+	r.style.backgroundColor = getColor();
+	r.style.top = rectA.y + "px";
+	r.style.left = rectA.x + "px";
+	r.style.width = rectA.w + "px";
+	r.style.height = rectA.h + "px";
+	r.id = rectA.id;
+	r.onmouseover = function(event) {
+		// change color
+		event.target.style.backgroundColor = getColor();
+		// get rectangle index from DOM
+		var rId = +event.target.id;
+		// get active rectangle pointer
+		var rObj = activeRectangles[rId];
+		// save mouse position
+		rObj.mPosX = event.clientX;
+		rObj.mPosY = event.clientY;
+		// set timer to move rectangle
+		rObj.timer = setTimeout(function() {
+			// generate new position
+			generateRectanglePos(rObj, activeRectangles);
+			// apply new position to DOM element
+			var rEl = document.getElementById(rId);
+			rEl.style.top = rObj.y + "px";
+			rEl.style.left = rObj.x + "px";
+			// clear mouse position
+			rObj.mPosX = undefined;
+			rObj.mPosY = undefined;
+		}, 3000);
+	};
+	r.onmouseout = function(event) {
+		// get active rectangle pointer
+		var rObj = activeRectangles[+event.target.id];
+		// clear timeout
+		if(rObj.timer > 0) clearTimeout(rObj.timer);
+		// clear mouse position
+		rObj.mPosX = undefined;
+		rObj.mPosY = undefined;
+	};
+	r.onmousemove = function(event) {
+		// get active rectangle pointer
+		var rObj = activeRectangles[+event.target.id];
+		// save mouse position
+		rObj.mPosX = event.clientX;
+		rObj.mPosY = event.clientY;
+	};
+	return r;
+}
+
+window.onload = function(){
+	var activeRectangles = [];
+	// initialize canvas div
+	var canvas = initCanvas();
+	document.documentElement.appendChild(canvas);
+	// create rectangles
+	for(var i = 0; i < nRectangles; i++) {
+		var r = createRectangle(activeRectangles);
+		canvas.appendChild(r);
+	}
+}
 
 </script>
 <!-- If using a framework, please insert <script src> here -->
